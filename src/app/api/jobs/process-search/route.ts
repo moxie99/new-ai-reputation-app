@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { NextRequest, NextResponse } from 'next/server'
-import { verifySignature } from '@upstash/qstash/nextjs'
+import { verifySignatureAppRouter } from '@upstash/qstash/nextjs'
 import { adminDb } from '@/lib/firebase-admin'
 import { DataRetrievalOrchestrator } from '@/lib/services/data-retrieval'
 import { AIAnalysisService } from '@/lib/services/ai-analysis'
@@ -27,10 +27,7 @@ async function handler(request: NextRequest) {
 
       const allResults = await dataRetrieval.retrieveAllData(
         searchId,
-        targetPerson,
-        async (progress: number, step: string) => {
-          await searchRef.update({ progress, currentStep: step })
-        }
+        targetPerson
       )
 
       await searchRef.update({
@@ -39,11 +36,20 @@ async function handler(request: NextRequest) {
         progress: 70,
       })
 
+      // Option 2: If targetPerson is needed, include it in allResults
+      const allResultsWithTarget = {
+        ...allResults,
+        targetPerson,
+      }
       const analysis = await aiAnalysis.analyzeAllCategories(
         searchId,
-        allResults,
-        targetPerson
+        allResultsWithTarget
       )
+
+      // const analysis = await aiAnalysis.analyzeAllCategories(
+      //   searchId,
+      //   allResults
+      // )
 
       await searchRef.update({
         currentStep: 'Generating final report',
@@ -87,4 +93,4 @@ async function handler(request: NextRequest) {
   }
 }
 
-export const POST = verifySignature(handler)
+export const POST = verifySignatureAppRouter(handler)
