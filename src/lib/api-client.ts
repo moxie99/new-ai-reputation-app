@@ -7,9 +7,10 @@ interface ApiOptions extends RequestInit {
 export async function apiClient(url: string, options: ApiOptions = {}) {
   const { auth = true, ...fetchOptions } = options
 
-  const headers: HeadersInit = {
+  // Option 1: Type headers as Record<string, string>
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...fetchOptions.headers,
+    ...((fetchOptions.headers as Record<string, string>) || {}),
   }
 
   if (auth) {
