@@ -5,13 +5,15 @@ import { adminDb } from '@/lib/firebase-admin'
 import jwt from 'jsonwebtoken'
 
 interface Params {
-  params: {
+  params: Promise<{
     reportId: string
-  }
+  }>
 }
 
-export async function GET(request: NextRequest, { params }: Params) {
+export async function GET(request: NextRequest, context: Params) {
   try {
+    // Await the params
+    const params = await context.params
     const { reportId } = params
 
     const reportDoc = await adminDb.collection('reports').doc(reportId).get()
