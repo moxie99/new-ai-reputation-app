@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
 
 interface Params {
-  params: {
+  params: Promise<{
     searchId: string
-  }
+  }>
 }
 
-export async function GET(request: NextRequest, { params }: Params) {
+export async function GET(request: NextRequest, context: Params) {
   try {
+    const params = await context.params
     const { searchId } = params
 
     const doc = await adminDb.collection('searches').doc(searchId).get()
