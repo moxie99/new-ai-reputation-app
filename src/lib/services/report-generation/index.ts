@@ -8,6 +8,25 @@ import {
   Report,
 } from '../../../../types'
 
+// Define types for the reasoning log
+interface ReasoningCategory {
+  summary: string
+  flagCount: number
+  reasoning: Array<{
+    quote: string
+    source: string
+    url: string
+    context: string
+    toxicityScore?: number
+  }>
+}
+
+interface ReasoningLog {
+  searchId: string
+  timestamp: string
+  categories: Record<string, ReasoningCategory>
+}
+
 export class ReportGenerationService {
   async generateReport(
     searchId: string,
@@ -65,7 +84,7 @@ export class ReportGenerationService {
 
   private async logAnalysisReasoning(searchId: string, analysis: any) {
     // Store detailed reasoning for each conclusion
-    const reasoningLog = {
+    const reasoningLog: ReasoningLog = {
       searchId,
       timestamp: new Date().toISOString(),
       categories: {},
