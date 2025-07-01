@@ -10,6 +10,23 @@ import {
   RawDataItem,
 } from '../../../../types'
 
+// Define the analysis result type
+interface AnalysisResult {
+  summary: string
+  flags: FlaggedContent[]
+}
+
+// Define valid category types
+type AnalysisCategoryType = 
+  | 'professionalism'
+  | 'tone'
+  | 'sentiment'
+  | 'consistency'
+  | 'authenticity'
+  | 'socialRisk'
+  | 'onlineExposure'
+  | 'positiveMarkers'
+
 export class AIAnalysisService {
   private openai: OpenAI
   private perspectiveApiKey: string
@@ -70,12 +87,13 @@ export class AIAnalysisService {
 
       if (relevantData.length === 0) continue
 
-      const analysis = await this.queue.add(() =>
+      const analysis = await this.queue.add<AnalysisResult>(() =>
         this.analyzeChunk(relevantData, 'professionalism', targetPerson)
       )
-
-      summaries.push(analysis.summary)
-      flaggedContent.push(...analysis.flags)
+      if (analysis) {
+        summaries.push(analysis.summary)
+        flaggedContent.push(...analysis.flags)
+      }
     }
 
     const finalSummary = await this.synthesizeSummaries(
@@ -113,12 +131,14 @@ export class AIAnalysisService {
       // Run Perspective API on social content
       const toxicityScores = await this.analyzeToxicity(socialContent)
 
-      const analysis = await this.queue.add(() =>
+      const analysis = await this.queue.add<AnalysisResult>(() =>
         this.analyzeChunk(socialContent, 'tone', targetPerson, toxicityScores)
       )
 
-      summaries.push(analysis.summary)
-      flaggedContent.push(...analysis.flags)
+      if (analysis) {
+        summaries.push(analysis.summary)
+        flaggedContent.push(...analysis.flags)
+      }
     }
 
     const finalSummary = await this.synthesizeSummaries(summaries, 'tone')
@@ -149,12 +169,14 @@ export class AIAnalysisService {
 
       if (thirdPartyContent.length === 0) continue
 
-      const analysis = await this.queue.add(() =>
+      const analysis = await this.queue.add<AnalysisResult>(() =>
         this.analyzeChunk(thirdPartyContent, 'sentiment', targetPerson)
       )
 
-      summaries.push(analysis.summary)
-      flaggedContent.push(...analysis.flags)
+      if (analysis) {
+        summaries.push(analysis.summary)
+        flaggedContent.push(...analysis.flags)
+      }
     }
 
     const finalSummary = await this.synthesizeSummaries(summaries, 'sentiment')
@@ -208,9 +230,9 @@ export class AIAnalysisService {
     return {
       id: 'consistency',
       title: 'Consistency Analysis',
-      summary: analysis.summary,
-      flaggedContent: analysis.flags,
-      sources: analysis.flags.length,
+      summary: analysis?.summary || 'No consistency analysis available',
+      flaggedContent: analysis?.flags || [],
+      sources: analysis?.flags.length || 0,
     }
   }
 
@@ -233,12 +255,14 @@ export class AIAnalysisService {
 
       if (relevantData.length === 0) continue
 
-      const analysis = await this.queue.add(() =>
+      const analysis = await this.queue.add<AnalysisResult>(() =>
         this.analyzeChunk(relevantData, 'authenticity', targetPerson)
       )
 
-      summaries.push(analysis.summary)
-      flaggedContent.push(...analysis.flags)
+      if (analysis) {
+        summaries.push(analysis.summary)
+        flaggedContent.push(...analysis.flags)
+      }
     }
 
     const finalSummary = await this.synthesizeSummaries(
@@ -272,12 +296,14 @@ export class AIAnalysisService {
         return score && score > 0.7 // High toxicity threshold
       })
 
-      const analysis = await this.queue.add(() =>
+      const analysis = await this.queue.add<AnalysisResult>(() =>
         this.analyzeChunk(chunk, 'socialRisk', targetPerson, toxicityScores)
       )
 
-      summaries.push(analysis.summary)
-      flaggedContent.push(...analysis.flags)
+      if (analysis) {
+        summaries.push(analysis.summary)
+        flaggedContent.push(...analysis.flags)
+      }
     }
 
     const finalSummary = await this.synthesizeSummaries(summaries, 'socialRisk')
@@ -375,8 +401,8 @@ Example output format: "Featured in 4 major tech press articles, appeared on 2 p
     return {
       id: 'onlineExposure',
       title: 'Online Exposure Level',
-      summary: analysis.summary,
-      flaggedContent: analysis.flags,
+      summary: analysis?.summary || 'No exposure analysis available',
+      flaggedContent: analysis?.flags ? analysis?.flags : [],
       sources: allData.length,
     }
   }
@@ -399,12 +425,14 @@ Example output format: "Featured in 4 major tech press articles, appeared on 2 p
 
       if (positiveIndicators.length === 0) continue
 
-      const analysis = await this.queue.add(() =>
+      const analysis = await this.queue.add<AnalysisResult>(() =>
         this.analyzeChunk(positiveIndicators, 'positiveMarkers', targetPerson)
       )
 
-      summaries.push(analysis.summary)
-      flaggedContent.push(...analysis.flags)
+      if (analysis) {
+        summaries.push(analysis.summary)
+        flaggedContent.push(...analysis.flags)
+      }
     }
 
     const finalSummary = await this.synthesizeSummaries(
@@ -425,7 +453,7 @@ Example output format: "Featured in 4 major tech press articles, appeared on 2 p
 
   private async analyzeChunk(
     data: RawDataItem[],
-    category: string,
+    category: AnalysisCategoryType,
     targetPerson: any,
     toxicityScores?: Map<string, number>
   ): Promise<{ summary: string; flags: FlaggedContent[] }> {
@@ -457,11 +485,11 @@ Example output format: "Featured in 4 major tech press articles, appeared on 2 p
   }
 
   private buildAnalysisPrompt(
-    category: string,
+    category: AnalysisCategoryType,
     data: RawDataItem[],
     targetPerson: any
   ): string {
-    const prompts = {
+    const prompts: Partial<Record<AnalysisCategoryType, string>> = {
       professionalism: `Analyze the professional reputation of ${
         targetPerson.name
       } based on the following content. Focus on:
@@ -568,11 +596,11 @@ Extract all verifiable positive accomplishments with sources.
 Example output format: "Selected for Forbes 30 Under 30 (2023). Board member at local nonprofit. Verified LinkedIn and Twitter accounts."`,
     }
 
-    return prompts[category] || prompts.professionalism
+    return prompts[category] || prompts.professionalism || ''
   }
 
-  private getSystemPrompt(category: string): string {
-    const systemPrompts = {
+  private getSystemPrompt(category: AnalysisCategoryType): string {
+    const systemPrompts: Partial<Record<AnalysisCategoryType, string>> = {
       authenticity: `You are an expert analyst evaluating authenticity and depth of online personas. Your analysis must identify original content vs recycled material, personal narratives, and community engagement quality. Focus on vulnerability markers and genuine interactions.`,
 
       socialRisk: `You are a risk assessment specialist evaluating potential PR and reputational risks. Focus on identifying problematic content, hate speech, offensive statements, and patterns of controversial behavior. Rate severity critically.`,
@@ -649,7 +677,7 @@ URL: ${item.url}`
           if (source) {
             flags.push({
               quote,
-              date: source.date,
+              date: source.date || '',
               source: source.source,
               url: source.url,
               context: item,
@@ -792,7 +820,7 @@ URL: ${item.url}`
     const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
 
     data.forEach((item) => {
-      const itemDate = new Date(item.date)
+      const itemDate = new Date(item.date || '2025-10-10')
       if (itemDate > threeMonthsAgo) {
         groups.recent.push(item)
       } else if (itemDate > oneYearAgo) {
