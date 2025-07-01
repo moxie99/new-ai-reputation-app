@@ -390,7 +390,7 @@ Example output format: "Featured in 4 major tech press articles, appeared on 2 p
         summary: response.choices[0].message.content!,
         flags: mediaArticles.slice(0, 5).map((item) => ({
           quote: item.title || item.content.substring(0, 100),
-          date: item.date,
+          date: item.date || 'Unknown date',
           source: item.source,
           url: item.url,
           context: 'High-visibility media coverage',
@@ -402,7 +402,7 @@ Example output format: "Featured in 4 major tech press articles, appeared on 2 p
       id: 'onlineExposure',
       title: 'Online Exposure Level',
       summary: analysis?.summary || 'No exposure analysis available',
-      flaggedContent: analysis?.flags ? analysis?.flags : [],
+      flaggedContent: analysis?.flags || [],
       sources: allData.length,
     }
   }
