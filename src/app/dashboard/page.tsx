@@ -43,7 +43,8 @@ export default function Dashboard() {
 
       if (response.ok) {
         const data = await response.json()
-        setSearches(data)
+        console.log(data, '[[[[]]]')
+        setSearches(data?.searches)
       }
     } catch (error) {
       console.error('Error fetching search history:', error)

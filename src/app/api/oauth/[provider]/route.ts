@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-require-imports */
+ 
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
-
+import jwt from 'jsonwebtoken'
 const OAUTH_CONFIGS = {
   google: {
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
@@ -55,8 +55,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
     }
 
     const token = authHeader.replace('Bearer ', '')
-    const jwt = require('jsonwebtoken')
-    const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET!)
+    const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET!) as any
 
     // Generate state token
     const state = Buffer.from(

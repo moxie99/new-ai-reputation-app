@@ -12,6 +12,7 @@ async function handler(request: NextRequest) {
     const body = await request.json()
     const { searchId, targetPerson, photoEmbedding, userId } = body
 
+    console.log('🔄 Processing search job:', searchId)
     const searchRef = adminDb.collection('searches').doc(searchId)
 
     try {
@@ -25,9 +26,19 @@ async function handler(request: NextRequest) {
       const aiAnalysis = new AIAnalysisService()
       const reportGeneration = new ReportGenerationService()
 
+      console.log('🔍 Retrieving data for:', targetPerson.name)
+
+      // Create progress callback function
+      const progressCallback = async (progress: number, step: string) => {
+        console.log(`📊 Progress: ${progress}% - ${step}`)
+        await searchRef.update({
+          currentStep: step,
+          progress: Math.max(progress, 10), // Ensure progress doesn't go below 10%
+        })
+      }
       const allResults = await dataRetrieval.retrieveAllData(
-        searchId,
-        targetPerson
+        targetPerson, // ✅ Correct: targetPerson first
+        progressCallback // ✅ Correct: progressCallback second
       )
 
       await searchRef.update({
@@ -35,27 +46,37 @@ async function handler(request: NextRequest) {
         currentStep: 'Analyzing content with AI',
         progress: 70,
       })
-
-      // Option 2: If targetPerson is needed, include it in allResults
-      const allResultsWithTarget = {
-        ...allResults,
-        targetPerson,
-      }
-      const analysis = await aiAnalysis.analyzeAllCategories(
-        searchId,
-        allResultsWithTarget
+      console.log('🤖 Analyzing results with AI...')
+      console.log(
+        `📊 Analyzing ${allResults.length} results for: ${targetPerson.name}`
       )
+
+      // // Option 2: If targetPerson is needed, include it in allResults
+      // const allResultsWithTarget = {
+      //   ...allResults,
+      //   targetPerson,
+      // }
+      // const analysis = await aiAnalysis.analyzeAllCategories(
+      //   searchId,
+      //   allResultsWithTarget
+      // )
 
       // const analysis = await aiAnalysis.analyzeAllCategories(
       //   searchId,
       //   allResults
       // )
 
+      // Fix: Pass parameters in correct order
+      const analysis = await aiAnalysis.analyzeAllCategories(
+        allResults, // ✅ First: RawDataItem[]
+        targetPerson // ✅ Second: target person object
+      )
       await searchRef.update({
         currentStep: 'Generating final report',
         progress: 90,
       })
 
+      console.log('📄 Generating final report...')
       const report = await reportGeneration.generateReport(
         searchId,
         targetPerson,
@@ -72,9 +93,10 @@ async function handler(request: NextRequest) {
         reportId: report.id,
       })
 
+      console.log('✅ Search job completed successfully:', searchId)
       return NextResponse.json({ success: true, reportId: report.id })
     } catch (error: any) {
-      console.error('Processing error:', error)
+      console.error('❌ Processing error:', error)
 
       await searchRef.update({
         status: 'failed',
@@ -85,7 +107,7 @@ async function handler(request: NextRequest) {
       throw error
     }
   } catch (error) {
-    console.error('Job handler error:', error)
+    console.error('❌ Job handler error:', error)
     return NextResponse.json(
       { error: 'Job processing failed' },
       { status: 500 }
@@ -93,4 +115,7 @@ async function handler(request: NextRequest) {
   }
 }
 
-export const POST = verifySignatureAppRouter(handler)
+// Skip signature verification in development
+const isDevelopment = process.env.NODE_ENV === 'development'
+
+export const POST = isDevelopment ? handler : verifySignatureAppRouter(handler)

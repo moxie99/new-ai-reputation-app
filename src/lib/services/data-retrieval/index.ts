@@ -31,64 +31,131 @@ export class DataRetrievalOrchestrator {
     const allResults: RawDataItem[] = []
     const queries = this.buildSearchQueries(targetPerson)
 
-    // Step 1: Perplexity web search (primary source)
-    await progressCallback?.(10, 'Searching web with Perplexity')
-    const perplexityResults = await this.retrievers.perplexity.searchAll(
-      queries
-    )
-    allResults.push(...perplexityResults)
-
-    // Step 2: SerpAPI as backup
-    await progressCallback?.(20, 'Searching Google via SerpAPI')
-    const serpResults = await this.retrievers.serpapi.searchAll(
-      queries.slice(0, 3)
-    )
-    allResults.push(...serpResults)
-
-    // Step 3: YouTube search
-    await progressCallback?.(30, 'Searching YouTube')
-    const youtubeResults = await this.retrievers.youtube.search(
-      targetPerson.name
-    )
-    allResults.push(...youtubeResults)
-
-    // Step 4: Reddit discussions
-    await progressCallback?.(40, 'Searching Reddit discussions')
-    const redditResults = await this.retrievers.reddit.search(targetPerson.name)
-    allResults.push(...redditResults)
-
-    // Step 5: Platform-specific searches if handles provided
-    if (targetPerson.socialHandles) {
-      if (targetPerson.socialHandles.twitter) {
-        await progressCallback?.(50, 'Retrieving Twitter/X data')
-        const twitterResults = await this.retrievers.twitter.getUser(
-          targetPerson.socialHandles.twitter
-        )
-        allResults.push(...twitterResults)
-      }
-
-      if (targetPerson.socialHandles.github) {
-        await progressCallback?.(55, 'Retrieving GitHub data')
-        const githubResults = await this.retrievers.github.getUser(
-          targetPerson.socialHandles.github
-        )
-        allResults.push(...githubResults)
-      }
-
-      if (targetPerson.socialHandles.linkedin) {
-        await progressCallback?.(60, 'Retrieving LinkedIn data')
-        const linkedinResults = await this.retrievers.linkedin.search(
-          targetPerson.name,
-          targetPerson.socialHandles.linkedin
-        )
-        allResults.push(...linkedinResults)
+    // Helper function to safely call progress callback
+    const updateProgress = async (progress: number, step: string) => {
+      try {
+        if (progressCallback && typeof progressCallback === 'function') {
+          await progressCallback(progress, step)
+        } else {
+          console.log(`📊 Progress: ${progress}% - ${step}`)
+        }
+      } catch (error) {
+        console.error('Progress callback error:', error)
       }
     }
 
-    // Remove duplicates based on URL
-    const uniqueResults = this.deduplicateResults(allResults)
+    console.log(`🔍 Starting data retrieval for: ${targetPerson.name}`)
+    console.log(`📝 Generated ${queries.length} search queries`)
 
-    return uniqueResults
+    try {
+      // Step 1: Perplexity web search (primary source)
+      await updateProgress(10, 'Searching web with Perplexity')
+      try {
+        const perplexityResults = await this.retrievers.perplexity.searchAll(
+          queries
+        )
+        allResults.push(...perplexityResults)
+        console.log(`✅ Perplexity: Found ${perplexityResults.length} results`)
+      } catch (error) {
+        console.error('❌ Perplexity search failed:', error)
+      }
+
+      // Step 2: SerpAPI as backup
+      await updateProgress(20, 'Searching Google via SerpAPI')
+      try {
+        const serpResults = await this.retrievers.serpapi.searchAll(
+          queries.slice(0, 3)
+        )
+        allResults.push(...serpResults)
+        console.log(`✅ SerpAPI: Found ${serpResults.length} results`)
+      } catch (error) {
+        console.error('❌ SerpAPI search failed:', error)
+      }
+
+      // Step 3: YouTube search
+      await updateProgress(30, 'Searching YouTube')
+      try {
+        const youtubeResults = await this.retrievers.youtube.search(
+          targetPerson.name
+        )
+        allResults.push(...youtubeResults)
+        console.log(`✅ YouTube: Found ${youtubeResults.length} results`)
+      } catch (error) {
+        console.error('❌ YouTube search failed:', error)
+      }
+
+      // Step 4: Reddit discussions
+      await updateProgress(40, 'Searching Reddit discussions')
+      try {
+        const redditResults = await this.retrievers.reddit.search(
+          targetPerson.name
+        )
+        allResults.push(...redditResults)
+        console.log(`✅ Reddit: Found ${redditResults.length} results`)
+      } catch (error) {
+        console.error('❌ Reddit search failed:', error)
+      }
+
+      // Step 5: Platform-specific searches if handles provided
+      if (targetPerson.socialHandles) {
+        if (targetPerson.socialHandles.twitter) {
+          await updateProgress(50, 'Retrieving Twitter/X data')
+          try {
+            const twitterResults = await this.retrievers.twitter.getUser(
+              targetPerson.socialHandles.twitter
+            )
+            allResults.push(...twitterResults)
+            console.log(`✅ Twitter: Found ${twitterResults.length} results`)
+          } catch (error) {
+            console.error('❌ Twitter search failed:', error)
+          }
+        }
+
+        if (targetPerson.socialHandles.github) {
+          await updateProgress(55, 'Retrieving GitHub data')
+          try {
+            const githubResults = await this.retrievers.github.getUser(
+              targetPerson.socialHandles.github
+            )
+            allResults.push(...githubResults)
+            console.log(`✅ GitHub: Found ${githubResults.length} results`)
+          } catch (error) {
+            console.error('❌ GitHub search failed:', error)
+          }
+        }
+
+        if (targetPerson.socialHandles.linkedin) {
+          await updateProgress(60, 'Retrieving LinkedIn data')
+          try {
+            const linkedinResults = await this.retrievers.linkedin.search(
+              targetPerson.name,
+              targetPerson.socialHandles.linkedin
+            )
+            allResults.push(...linkedinResults)
+            console.log(`✅ LinkedIn: Found ${linkedinResults.length} results`)
+          } catch (error) {
+            console.error('❌ LinkedIn search failed:', error)
+          }
+        }
+      }
+
+      await updateProgress(65, 'Deduplicating results')
+
+      // Remove duplicates based on URL
+      const uniqueResults = this.deduplicateResults(allResults)
+
+      console.log(
+        `🎯 Total results: ${allResults.length}, Unique results: ${uniqueResults.length}`
+      )
+
+      await updateProgress(70, 'Data retrieval completed')
+
+      return uniqueResults
+    } catch (error) {
+      console.error('❌ Data retrieval orchestrator error:', error)
+      await updateProgress(0, 'Data retrieval failed')
+      throw error
+    }
   }
 
   private buildSearchQueries(

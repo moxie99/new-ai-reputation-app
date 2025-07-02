@@ -1,7 +1,8 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
-
+import jwt from 'jsonwebtoken'
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')
@@ -13,9 +14,7 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.replace('Bearer ', '')
-    const jwt = require('jsonwebtoken')
-    const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET!)
-
+    const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET!) as any
     const userDoc = await adminDb.collection('users').doc(decoded.userId).get()
 
     if (!userDoc.exists) {
