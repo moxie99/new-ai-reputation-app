@@ -3,18 +3,55 @@ import vision from '@google-cloud/vision'
 import { adminStorage } from '@/lib/firebase-admin'
 import { PhotoMatch, RawDataItem } from '../../../../types'
 
-// Add debugging for credentials
-function createVisionClient() {
-  const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+// Unified credentials function
+function getGoogleCloudCredentials() {
+  // Try base64 encoded credentials first (recommended for Vercel)
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64) {
+    try {
+      const decoded = Buffer.from(
+        process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64,
+        'base64'
+      ).toString('utf-8')
 
-  if (!credentialsJson) {
-    throw new Error(
-      'GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable is not set'
-    )
+      const credentials = JSON.parse(decoded)
+      console.log('✅ Using base64 encoded Google Cloud credentials')
+      return credentials
+    } catch (error: any) {
+      console.error('❌ Failed to decode base64 credentials:', error)
+      throw new Error(`Invalid base64 credentials: ${error.message}`)
+    }
   }
 
+  // Fallback to JSON string
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+    try {
+      // Clean the JSON string - remove potential wrapping quotes and trim whitespace
+      const cleanJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON.trim()
+        .replace(/^['"]/, '') // Remove leading quote (single or double)
+        .replace(/['"]$/, '') // Remove trailing quote (single or double)
+
+      const credentials = JSON.parse(cleanJson)
+      console.log('✅ Using JSON string Google Cloud credentials')
+      return credentials
+    } catch (error: any) {
+      console.error('❌ Failed to parse JSON credentials:', error)
+      console.error(
+        'First 100 chars:',
+        process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON?.substring(0, 100)
+      )
+      throw new Error(`Invalid JSON credentials: ${error.message}`)
+    }
+  }
+
+  throw new Error(
+    'No Google Cloud credentials found. Set either GOOGLE_APPLICATION_CREDENTIALS_BASE64 or GOOGLE_APPLICATION_CREDENTIALS_JSON'
+  )
+}
+
+// Add debugging for credentials
+function createVisionClient() {
   try {
-    const credentials = JSON.parse(credentialsJson)
+    const credentials = getGoogleCloudCredentials()
 
     // Check for required fields
     const requiredFields = ['client_email', 'private_key', 'project_id']
@@ -24,14 +61,12 @@ function createVisionClient() {
       }
     }
 
-    console.log('✅ Google Cloud credentials validated successfully')
+    console.log('✅ Google Cloud Vision credentials validated successfully')
 
     return new vision.ImageAnnotatorClient({ credentials })
-  } catch (parseError: any) {
-    console.error('❌ Failed to parse Google Cloud credentials:', parseError)
-    throw new Error(
-      `Invalid GOOGLE_APPLICATION_CREDENTIALS_JSON: ${parseError.message}`
-    )
+  } catch (error: any) {
+    console.error('❌ Failed to create Vision client:', error.message)
+    throw error
   }
 }
 
@@ -56,7 +91,6 @@ export async function uploadPhoto(file: File, userId: string) {
     expires: Date.now() + 60 * 60 * 1000, // 1 hour from now
   })
 
-  console.log(';;;;', signedUrl)
   console.log('✅ Generated signed URL:', signedUrl.substring(0, 100) + '...')
 
   return {
