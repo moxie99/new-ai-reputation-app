@@ -12,9 +12,14 @@ import {
   Shield,
   Menu,
   X,
+  MoreVertical,
+  Settings,
+  HelpCircle,
+  LogOut,
 } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
+import SettingsModal from '@/components/SettingsModal'
 
 const navLinks = [
   {
@@ -56,6 +61,8 @@ export default function B2BLayout({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
 
   // Check if screen is mobile size
   useEffect(() => {
@@ -71,12 +78,26 @@ export default function B2BLayout({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('resize', checkScreenSize)
   }, [])
 
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (isUserMenuOpen && !target.closest('.user-menu-container')) {
+        setIsUserMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isUserMenuOpen])
+
   // Handle bell icon click
   const handleNotificationClick = () => {
     router.push('/b2b/notifications')
   }
 
   const isOnNotificationsPage = pathname === '/b2b/notifications'
+
   // Handle collapse toggle
   const handleCollapseToggle = () => {
     if (isMobile) {
@@ -90,6 +111,25 @@ export default function B2BLayout({ children }: { children: React.ReactNode }) {
   const handleNavClick = () => {
     if (isMobile) {
       setIsMobileMenuOpen(false)
+    }
+  }
+
+  // Handle user menu actions
+  const handleUserMenuAction = (action: string) => {
+    setIsUserMenuOpen(false)
+
+    switch (action) {
+      case 'settings':
+        setIsSettingsModalOpen(true)
+        break
+      case 'help':
+        router.push('/b2b/help')
+        break
+      case 'signout':
+        // Handle sign out logic here
+        console.log('Signing out...')
+        // router.push('/login')
+        break
     }
   }
 
@@ -219,13 +259,13 @@ export default function B2BLayout({ children }: { children: React.ReactNode }) {
           )}
         </div>
 
-        {/* User profile */}
+        {/* User profile - Expanded state */}
         {(!isCollapsed || isMobile) && (
-          <div className='flex items-center gap-3 px-2 mt-8'>
+          <div className='flex items-center gap-3 px-2 mt-8 user-menu-container relative'>
             <div className='w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0'>
               <span className='text-gray-400 text-xl'>👤</span>
             </div>
-            <div className='min-w-0'>
+            <div className='min-w-0 flex-1'>
               <div className='font-semibold text-gray-800 text-sm truncate'>
                 Reona Satio
               </div>
@@ -233,20 +273,96 @@ export default function B2BLayout({ children }: { children: React.ReactNode }) {
                 reonasatio@gmail.com
               </div>
             </div>
+
+            {/* Three dots menu button */}
+            <button
+              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+              className='p-1 hover:bg-gray-100 rounded transition-colors'
+              title='User menu'
+            >
+              <MoreVertical size={16} className='text-gray-600' />
+            </button>
+
+            {/* Dropdown menu for expanded state */}
+            {isUserMenuOpen && (
+              <div className='absolute bottom-full left-0 mb-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50'>
+                <button
+                  onClick={() => handleUserMenuAction('settings')}
+                  className='w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors'
+                >
+                  <Settings size={16} />
+                  Settings
+                </button>
+                <button
+                  onClick={() => handleUserMenuAction('help')}
+                  className='w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors'
+                >
+                  <HelpCircle size={16} />
+                  Help
+                </button>
+                <hr className='my-1 border-gray-100' />
+                <button
+                  onClick={() => handleUserMenuAction('signout')}
+                  className='w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors'
+                >
+                  <LogOut size={16} />
+                  Sign Out
+                </button>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Collapsed user profile */}
+        {/* User profile - Collapsed state */}
         {isCollapsed && !isMobile && (
-          <div className='flex justify-center px-2 mt-8 group relative'>
-            <div className='w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center'>
-              <span className='text-gray-400 text-xl'>👤</span>
+          <div className='flex justify-center px-2 mt-8 user-menu-container relative'>
+            <div className='flex items-center gap-2'>
+              <div className='w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center group relative'>
+                <span className='text-gray-400 text-xl'>👤</span>
+                {/* Tooltip for collapsed user */}
+                <div className='absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10'>
+                  <div className='font-semibold'>Reona Satio</div>
+                  <div className='text-xs'>reonasatio@gmail.com</div>
+                </div>
+              </div>
+
+              {/* Three dots menu button */}
+              <button
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className='p-1 hover:bg-gray-100 rounded transition-colors'
+                title='User menu'
+              >
+                <MoreVertical size={16} className='text-gray-600' />
+              </button>
             </div>
-            {/* Tooltip for collapsed user */}
-            <div className='absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10'>
-              <div className='font-semibold'>Reona Satio</div>
-              <div className='text-xs'>reonasatio@gmail.com</div>
-            </div>
+
+            {/* Dropdown menu for collapsed state */}
+            {isUserMenuOpen && (
+              <div className='absolute bottom-full left-full ml-2 mb-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50'>
+                <button
+                  onClick={() => handleUserMenuAction('settings')}
+                  className='w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors'
+                >
+                  <Settings size={16} />
+                  Settings
+                </button>
+                <button
+                  onClick={() => handleUserMenuAction('help')}
+                  className='w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors'
+                >
+                  <HelpCircle size={16} />
+                  Help
+                </button>
+                <hr className='my-1 border-gray-100' />
+                <button
+                  onClick={() => handleUserMenuAction('signout')}
+                  className='w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors'
+                >
+                  <LogOut size={16} />
+                  Sign Out
+                </button>
+              </div>
+            )}
           </div>
         )}
       </aside>
@@ -259,6 +375,12 @@ export default function B2BLayout({ children }: { children: React.ReactNode }) {
       >
         {children}
       </main>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+      />
     </div>
   )
 }
