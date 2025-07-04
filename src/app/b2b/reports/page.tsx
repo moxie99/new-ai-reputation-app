@@ -128,6 +128,7 @@ export default function ReportsPage() {
   return (
     <div className='flex flex-col w-full'>
       {/* Stat Cards */}
+      <h1 className='text-[#002F6C] font-extrabold text-3xl mb-2'>REPORTS</h1>
       <div className='grid grid-cols-1 md:grid-cols-4 gap-6 mb-8'>
         {stats.map((stat, i) => (
           <div
@@ -171,7 +172,7 @@ export default function ReportsPage() {
       <div className='bg-white rounded-xl shadow overflow-hidden'>
         <Table>
           <TableHeader>
-            <TableRow className='-[#EEEEEE]'>
+            <TableRow className='border border-[#eeeeee]'>
               <TableHead className='text-left px-6 py-4 font-medium text-gray-400 text-xs'>
                 NAME
               </TableHead>
