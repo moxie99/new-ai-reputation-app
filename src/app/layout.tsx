@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import type { Metadata } from 'next'
+import { Geist, Geist_Mono } from 'next/font/google'
+import './globals.css'
 import { Analytics } from '@vercel/analytics/react'
 import { Providers } from '@/components/providers'
 import { Header } from '@/components/header'
@@ -32,7 +33,7 @@ export default function RootLayout({
       >
         <Providers>
           <div className='min-h-screen bg-gray-50'>
-            <Header />
+            {/* <Header /> */}
             <main>{children}</main>
           </div>
         </Providers>

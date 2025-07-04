@@ -28,7 +28,7 @@ export default function Home() {
   }, [router])
 
   return (
-    <div className='min-h-screen w-full bg-gradient-to-br from-blue-600 via-purple-500 to-pink-400 bg-blend-multiply flex flex-col'>
+    <div className='min-h-screen w-full flex flex-col'>
       <div className='flex-1 flex flex-col justify-center items-center'>
         <Hero />
         <Features />
